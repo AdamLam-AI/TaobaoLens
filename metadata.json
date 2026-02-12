@@ -1,0 +1,5 @@
+{
+  "name": "Copy of TaobaoLens OCR_01",
+  "description": "Upload a photo to analyze product details and extracted text, then instantly search for similar items on Taobao.",
+  "requestFramePermissions": []
+}
