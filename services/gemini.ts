@@ -8,66 +8,47 @@ export const analyzeProductImage = async (base64Image: string): Promise<ProductA
     // 2. Clean the image data
     const cleanBase64 = base64Image.replace(/^data:image\/(png|jpeg|jpg|webp);base64,/, "");
 
-    // 3. Define the Schema (We can use this because we are going back to v1beta)
-    const responseSchema = {
-      type: "ARRAY",
-      items: {
-        type: "OBJECT",
-        properties: {
-          productName: { type: "STRING" },
-          category: { type: "STRING" },
-          subCategory: { type: "STRING" },
-          goldenTitle: { type: "STRING" },
-          marketingTags: { type: "ARRAY", items: { type: "STRING" } },
-          detectedText: { type: "STRING", nullable: true },
-          boundingBox: {
-            type: "ARRAY",
-            items: { type: "NUMBER" },
-            description: "[ymin, xmin, ymax, xmax] normalized coordinates"
-          },
-          attributes: {
-            type: "OBJECT",
-            properties: {
-              "Category": { type: "STRING" },
-              "Color": { type: "STRING" },
-              "Feature": { type: "STRING" },
-              "Material": { type: "STRING" },
-              "Shape": { type: "STRING" },
-              "Style": { type: "STRING" }
-            }
-          },
-          shortDescription: { type: "STRING" }
-        },
-        required: ["productName", "goldenTitle", "attributes", "category", "subCategory", "shortDescription", "boundingBox"]
-      }
-    };
-
-    // 4. Define the Prompt
-    const myPrompt = `You are a professional Sourcing & Image Separation Agent specialized in the Chinese market (Taobao).
+    // 3. Define the Prompt (Strongly enforcing JSON here)
+    const myPrompt = `You are a professional Sourcing Agent for Taobao.
 
     **MISSION**: 
-    Scan the image and identify EVERY distinct product. If multiple items are shown, separate them into individual entries.
+    Identify EVERY product in the image. Return a raw JSON array.
 
-    **FOR EACH PRODUCT DETECTED (USE SIMPLIFIED CHINESE)**:
-    1. **Category (类目)**: General category (e.g., 服装).
-    2. **Sub Category (子类目)**: Specific sub category (e.g., T恤, 连衣裙).
-    3. **Color (颜色)**: Specific color.
-    4. **Feature (特点)**: Distinguishing detail (e.g., 圆领, 纽扣).
-    5. **Material (材质)**: Estimated fabric (e.g., 棉质).
-    6. **Shape (版型)**: Fit style (e.g., 修身).
-    7. **Style (风格)**: General vibe (e.g., 休闲).
-    8. **Golden Title (淘宝标题)**: A Simplified Chinese search string optimized for Taobao.
-       **PRIORITY ORDER**: [风格] + [版型] + [材质] + [特点] + [类目].
-    9. **Bounding Box**: Normalized coordinates [ymin, xmin, ymax, xmax] (0-1000).
-
-    **IMPORTANT**: All text values must be in Simplified Chinese (简体中文).`;
-
-    // 5. THE FIX: v1beta + Specific Version ID (-001)
-    // - v1beta: Supports 'response_schema' (Prevents 400 Error)
-    // - gemini-1.5-flash-001: The specific ID (Prevents 404 Not Found)
-    const url = `/google-api/v1beta/models/gemini-1.5-flash-001:generateContent?key=${API_KEY}`;
+    **STRICT JSON FORMAT REQUIRED**:
+    Return ONLY a valid JSON array. Do not write markdown, do not write "\`\`\`json", do not write any intro text.
     
-    console.log("Using Golden Ticket URL:", url);
+    The JSON structure for each item must be:
+    {
+      "productName": "String (Simplified Chinese)",
+      "category": "String (Simplified Chinese)",
+      "subCategory": "String (Simplified Chinese)",
+      "goldenTitle": "String (Search optimized title in Chinese)",
+      "marketingTags": ["Tag1", "Tag2"],
+      "detectedText": "String or null",
+      "boundingBox": [ymin, xmin, ymax, xmax],
+      "attributes": {
+        "Category": "String",
+        "Color": "String",
+        "Feature": "String",
+        "Material": "String",
+        "Shape": "String",
+        "Style": "String"
+      },
+      "shortDescription": "String"
+    }
+
+    **IMPORTANT**: 
+    - All text values must be in Simplified Chinese.
+    - Bounding box coordinates must be normalized (0-1000).
+    - If multiple items, return multiple objects in the array.`;
+
+    // 4. Send Request via PROXY (Using Stable v1)
+    // We use the standard 'gemini-1.5-flash' on the 'v1' channel.
+    // This previously gave a 400 error because of "response_schema".
+    // We have REMOVED "response_schema" below, so it should now work.
+    const url = `/google-api/v1/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
+    
+    console.log("Using Robust v1 URL:", url);
 
     const response = await fetch(url, {
       method: "POST",
@@ -85,11 +66,8 @@ export const analyzeProductImage = async (base64Image: string): Promise<ProductA
               }
             }
           ]
-        }],
-        generationConfig: {
-          response_mime_type: "application/json",
-          response_schema: responseSchema
-        }
+        }]
+        // REMOVED: generationConfig (This was the cause of the 400 error!)
       })
     });
 
@@ -105,7 +83,11 @@ export const analyzeProductImage = async (base64Image: string): Promise<ProductA
       throw new Error("Gemini returned no candidates.");
     }
 
-    const textResult = data.candidates[0].content.parts[0].text;
+    let textResult = data.candidates[0].content.parts[0].text;
+
+    // 5. Clean the response (Remove markdown if the AI adds it)
+    textResult = textResult.replace(/```json/g, "").replace(/```/g, "").trim();
+
     return JSON.parse(textResult) as ProductAnalysis[];
 
   } catch (error) {
