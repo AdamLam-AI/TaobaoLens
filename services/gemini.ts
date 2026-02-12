@@ -62,8 +62,8 @@ export const analyzeProductImage = async (base64Image: string): Promise<ProductA
 
     **IMPORTANT**: All text values must be in Simplified Chinese (简体中文).`;
 
-    // 5. Send Request via PROXY (Bypassing the Block)
-    const response = await fetch(`/google-api/v1beta/models/gemini-1.5-pro:generateContent?key=${API_KEY}`, {
+    // 5. Send Request via PROXY (Using the -001 Stable Version)
+    const response = await fetch(`/google-api/v1beta/models/gemini-1.5-flash-001:generateContent?key=${API_KEY}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
