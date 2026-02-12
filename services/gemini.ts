@@ -62,8 +62,12 @@ export const analyzeProductImage = async (base64Image: string): Promise<ProductA
 
     **IMPORTANT**: All text values must be in Simplified Chinese (简体中文).`;
 
-    // 5. Send Request via PROXY (Using the -001 Stable Version)
-    const response = await fetch(`/google-api/v1beta/models/gemini-pro:generateContent?key=${API_KEY}`, {
+    // 5. Send Request via PROXY
+    // We use the standard "gemini-1.5-flash" which definitely exists and supports images.
+    const url = `/google-api/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
+    console.log("Attempting to fetch via proxy:", url); // DEBUG LOG
+
+    const response = await fetch(url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -89,6 +93,8 @@ export const analyzeProductImage = async (base64Image: string): Promise<ProductA
 
     if (!response.ok) {
       const errorText = await response.text();
+      // This will print the exact reason from Google in your Console
+      console.error("Full Error Body:", errorText);
       throw new Error(`API Request Failed: ${response.status} ${response.statusText} - ${errorText}`);
     }
 
