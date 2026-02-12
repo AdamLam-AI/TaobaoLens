@@ -8,7 +8,7 @@ export const analyzeProductImage = async (base64Image: string): Promise<ProductA
     // 2. Clean the image data
     const cleanBase64 = base64Image.replace(/^data:image\/(png|jpeg|jpg|webp);base64,/, "");
 
-    // 3. Define the Schema
+    // 3. Define the Schema (Standard format)
     const responseSchema = {
       type: "ARRAY",
       items: {
@@ -62,10 +62,10 @@ export const analyzeProductImage = async (base64Image: string): Promise<ProductA
 
     **IMPORTANT**: All text values must be in Simplified Chinese (简体中文).`;
 
-    // 5. Send Request via PROXY
-    // We use the standard "gemini-1.5-flash" which definitely exists and supports images.
-    const url = `/google-api/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
-    console.log("Attempting to fetch via proxy:", url); // DEBUG LOG
+    // 5. THE FIX: Use 'v1' (Stable) instead of 'v1beta'
+    const url = `/google-api/v1/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
+    
+    console.log("Using Stable v1 URL:", url);
 
     const response = await fetch(url, {
       method: "POST",
@@ -93,9 +93,8 @@ export const analyzeProductImage = async (base64Image: string): Promise<ProductA
 
     if (!response.ok) {
       const errorText = await response.text();
-      // This will print the exact reason from Google in your Console
-      console.error("Full Error Body:", errorText);
-      throw new Error(`API Request Failed: ${response.status} ${response.statusText} - ${errorText}`);
+      console.error("Google API Error:", errorText);
+      throw new Error(`API Request Failed: ${response.status} ${errorText}`);
     }
 
     const data = await response.json();
@@ -108,7 +107,7 @@ export const analyzeProductImage = async (base64Image: string): Promise<ProductA
     return JSON.parse(textResult) as ProductAnalysis[];
 
   } catch (error) {
-    console.error("Gemini Multi Analysis Error:", error);
+    console.error("Gemini Analysis Error:", error);
     throw error;
   }
 };
