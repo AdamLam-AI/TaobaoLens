@@ -46,7 +46,7 @@ export const analyzeProductImage = async (base64Image: string): Promise<ProductA
     // We use the standard 'gemini-1.5-flash' on the 'v1' channel.
     // This previously gave a 400 error because of "response_schema".
     // We have REMOVED "response_schema" below, so it should now work.
-    const url = `/google-api/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
+    const url = `/google-api/v1beta/models/gemini-2.5-flash:generateContent?key=${API_KEY}`;
     
     console.log("Using Robust v1 URL:", url);
 
