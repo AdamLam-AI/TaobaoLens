@@ -48,23 +48,19 @@ export const analyzeProductImage = async (base64Image: string): Promise<ProductA
     // We have REMOVED "response_schema" below, so it should now work.
     const url = `/google-api/v1beta/models/gemini-2.5-flash:generateContent?key=${API_KEY}`;
     
-    console.log("Using Robust v1 URL:", url);
+    try {
+        const response = await fetch(targetUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(req.body) 
+        });
 
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        contents: [{
-          parts: [
-            { text: myPrompt },
-            {
-              inline_data: {
-                mime_type: "image/jpeg",
-                data: cleanBase64
-              }
-            }
+        const data = await response.json();
+        res.status(response.status).json(data);
+    } catch (error) {
+        res.status(500).json({ error: 'Proxy failed' });
+    }
+}
           ]
         }]
         // REMOVED: generationConfig (This was the cause of the 400 error!)
